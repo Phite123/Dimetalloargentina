@@ -1,0 +1,272 @@
+﻿@page "/calidad/{id:int}"
+<br />
+<button class="btn btn-outline-primary" @onclick="ComeBack"><FeatherArrowLeft Color="Blue"></FeatherArrowLeft></button>
+<br />
+<br />
+<h1>Información correspondiente a la orden n° @id</h1>
+<hr />
+
+@if (oTrabajo.Estado == "CC")
+{
+    <button class="btn btn-outline-danger" Click=@(() => alertaRechazar("la carpeta"))>Rechazar carpeta</button>
+    <a>&nbsp;</a>
+    <button class="btn btn-outline-success" Click=@(() => alertaAprobar("la carpeta"))>Aprobar carpeta</button>
+}
+
+@if (oTrabajo.Estado == "CPU")
+{
+    <button class="btn btn-outline-danger" Click=@(() => alertaRechazar("el pulido"))>Rechazar pulido</button>
+    <a>&nbsp;</a>
+    <button class="btn btn-outline-success" Click=@(() => alertaAprobar("el pulido"))>Aprobar pulido</button>
+}
+
+@if (oTrabajo.Estado == "CPL")
+{
+    <button class="btn btn-outline-danger" Click=@(() => alertaRechazar("el plegado"))>Rechazar plegado</button>
+    <a>&nbsp;</a>
+    <button class="btn btn-outline-success" Click=@(() => alertaAprobar("el plegado"))>Aprobar plegado</button>
+}
+
+@if (oTrabajo.Estado == "CA")
+{
+    <button class="btn btn-outline-danger" Click=@(() => alertaRechazar("el armado"))>Rechazar armado</button>
+    <a>&nbsp;</a>
+    <button class="btn btn-outline-success" Click=@(() => alertaAprobar("el armado"))>Aprobar armado</button>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    Ordentrabajo oTrabajo = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var response = await http.GetFromJsonAsync<Respuesta<Ordentrabajo>>($"/api/ot/{id}");
+        oTrabajo = response.List;
+
+    }
+    async Task ComeBack()
+    {
+        nav.NavigateTo("/calidad");
+    }
+
+    public async Task alertaAprobar(string proceso)
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "¿Está seguro?",
+                Text = $"Se aprobará {proceso}",
+                Icon = SweetAlertIcon.Success,
+                ShowCancelButton = true,
+                ConfirmButtonText = "Aprobar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+            if (proceso == "la carpeta") rccbutton();
+            if (proceso == "el pulido") rpubutton();
+            if (proceso == "el plegado") rplbutton();
+            if (proceso == "el armado") rabutton();
+        }
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+
+        }
+    }
+
+    public async Task alertaRechazar(string proceso)
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "¿Está seguro?",
+                Text = $"Se rechazará {proceso}",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "Rechazar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+            if (proceso == "la carpeta") rccbutton();
+            if (proceso == "el pulido") rpubutton();
+            if (proceso == "el plegado") rplbutton();
+            if (proceso == "el armado") rabutton();
+        }
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+
+        }
+    }
+
+    async Task ccbutton()
+    {
+        oTrabajo.Estado = "Punzonado";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CC").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Punzonado");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task rccbutton()
+    {
+        oTrabajo.Estado = "Oficina tecnica";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CC").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Oficina tecnica");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+
+    async Task pubutton()
+    {
+        oTrabajo.Estado = "Pintura";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CPU").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Pintura");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task rpubutton()
+    {
+        oTrabajo.Estado = "Pulido";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CPU").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Pulido");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task plbutton()
+    {
+        oTrabajo.Estado = "Soldadura";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CPL").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Soldadura");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task rplbutton()
+    {
+        oTrabajo.Estado = "Plegado";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CPL").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Plegado");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task abutton()
+    {
+        oTrabajo.Estado = "Despacho";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CA").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Despacho");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+    async Task rabutton()
+    {
+        oTrabajo.Estado = "Armado";
+
+        List<TimesEtapa> listTimes = JsonSerializer.Deserialize<List<TimesEtapa>>(oTrabajo.Fechas);
+        TimesEtapa times = listTimes.Where(x => x.Etapa == "CA").Last();
+        listTimes.RemoveAll(x => x == times);
+
+        times.Times.Add(("Salida", DateTime.Now));
+        DateTime entrada = times.Times.Where(x => x.accion == "Entrada").Last().time;
+        times.TimeTotalEtapa = (int)(DateTime.Now - entrada).TotalHours;
+
+        listTimes.Add(times);
+
+        TimesEtapa times2 = new("Armado");
+        listTimes.Add(times2);
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+        ComeBack();
+    }
+}

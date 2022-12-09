@@ -1,0 +1,107 @@
+﻿@using System.Text.Json
+@if (oCotizacione != null)
+{
+
+    <RadzenCard Class="my-3 rz-background-color-primary-lighter rz-shadow-0 rz-border-radius-0" style="margin: 0 calc(-1 * var(--rz-card-padding)); padding: 2rem;">
+        <RadzenText TextStyle="TextStyle.Overline" Class="d-flex mt-1 mb-0">Titulo</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1"><b>@oCotizacione.Titulo</b></RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline" Class="d-flex mt-3 mb-0">Cliente</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1"><b>@oCotizacione.Cliente</b></RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline" Class="d-flex mt-3 mb-0">Descripción</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1"><b>@oCotizacione.Descripcion</b></RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline" Class="d-flex mt-3 mb-0">Precio</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1"><b>@oCotizacione.Valorpeso</b></RadzenText>
+        <br />
+        <RadzenText TextStyle="TextStyle.Overline" Class="d-flex mt-3 mb-0">Planos</RadzenText>
+
+        @foreach (var plano in planos.ToList())
+        {
+            <a href="planos/@plano" download="@plano" target="_blank">@plano</a>
+
+            <br />
+        }
+    </RadzenCard>
+    <div class="text-end">
+        <RadzenButton Variant="Variant.Text" Class="rz-text-secondary-color" Text="Cerrar" Click="cancel" />
+        @if (oCotizacione.Estado == "Cargado")
+        {
+            <RadzenButton Variant="Variant.Text" Class="rz-text-secondary-color rz-background-color-secondary-lighter" Text="Rechazar" Click="rechazar" />
+            <RadzenButton Variant="Variant.Text" Class="rz-text-primary-color rz-background-color-primary-lighter" Text="Aprobar cotización" Click="aprobar" />
+        }
+    </div>
+
+
+
+}
+else
+{
+    <br />
+    <center>
+        <div class="mb-2">
+            <RadzenProgressBar Value="100" ShowValue="false" ProgressBarStyle="ProgressBarStyle.Secondary" Mode="ProgressBarMode.Indeterminate" />
+        </div>
+    </center>
+}
+
+@code {
+    Ordentrabajo oTrabajo = new();
+    Cotizacione oCotizacione = new();
+    Respuesta<Cotizacione> oRta = new();
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; }
+    [Parameter] public int id { get; set; }
+    List<string> planos = new();
+    protected override async Task OnInitializedAsync()
+    {
+        if (id != 0)
+        {
+            oRta = await http.GetFromJsonAsync<Respuesta<Cotizacione>>($"/api/Cotizacion/{id}");
+            oCotizacione = oRta.List;
+            planos = JsonSerializer.Deserialize<List<string>>(oCotizacione.Planos);
+            //foreach (var plano in planos)
+            //{
+            //    Console.WriteLine(plano);
+            //}
+        }
+    }
+    async Task cancel()
+    {
+
+        await ModalInstance.CloseAsync(ModalResult.Ok($"Form was cancelled"));
+
+    }
+
+    async Task rechazar()
+    {
+
+        oCotizacione.Estado = "Rechazada";
+        var respuesta = await http.PutAsJsonAsync<Cotizacione>("/api/Cotizacion", oCotizacione);
+        await ModalInstance.CloseAsync(ModalResult.Ok($"Form was cancelled"));
+    }
+
+    async Task aprobar()
+    {
+        oCotizacione.Estado = "Aprobada";
+        oTrabajo.Cantidad = oCotizacione.Cantidad;
+        oTrabajo.Descripcion = oCotizacione.Descripcion;
+        oTrabajo.Observaciones = oCotizacione.Observaciones;
+        oTrabajo.Fechaentrega = oCotizacione.Fechaentrega;
+        oTrabajo.Pedidofabrica = DateTime.Now;
+        oTrabajo.Planos = oCotizacione.Planos;
+        oTrabajo.Estado = "Oficina tecnica";
+        oTrabajo.Cliente = oCotizacione.Cliente;
+
+        TimesEtapa times = new("Oficina tecnica");
+        List<TimesEtapa> listTimes = new();
+        listTimes.Add(times);
+
+        oTrabajo.Fechas = JsonSerializer.Serialize<List<TimesEtapa>>(listTimes);
+
+        await http.PutAsJsonAsync<Cotizacione>("/api/Cotizacion", oCotizacione);
+        await http.PostAsJsonAsync<Ordentrabajo>("/api/ot", oTrabajo);
+
+        await ModalInstance.CloseAsync(ModalResult.Ok($"Form was cancelled"));
+
+    }
+
+
+}
